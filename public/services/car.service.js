@@ -49,7 +49,3 @@ function getEmptyCar() {
     }
 }
 
-
-
-
-
