@@ -132,8 +132,8 @@ async function removeStayMsg(stayId, msgId) {
 
 function _buildCriteria(filterBy) {
     const criteria = {
-        vendor: { $regex: filterBy.txt, $options: 'i' },
-        speed: { $gte: filterBy.minSpeed },
+        title: { $regex: filterBy.txt, $options: 'i' },
+        price: { $gte: filterBy.minPrice },
     }
 
     return criteria

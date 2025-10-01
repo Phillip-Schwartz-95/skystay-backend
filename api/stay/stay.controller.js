@@ -5,13 +5,13 @@ export async function getStays(req, res) {
     try {
         const filterBy = {
             txt: req.query.txt || '',
-            minSpeed: +req.query.minSpeed || 0,
+            minPrice: +req.query.minPrice || 0,
             sortField: req.query.sortField || '',
             sortDir: req.query.sortDir || 1,
             pageIdx: req.query.pageIdx,
         }
-        const cars = await carService.query(filterBy)
-        res.json(cars)
+        const stays = await stayService.query(filterBy)
+        res.json(stays)
     } catch (err) {
         logger.error('Failed to get stays', err)
         res.status(400).send({ err: 'Failed to get stays' })
@@ -32,11 +32,11 @@ export async function getStayById(req, res) {
 export async function addStay(req, res) {
     const { loggedinUser, body } = req
     const stay = {
-        vendor: body.vendor,
-        speed: body.speed
+        title: body.title,
+        price: body.price,
+        host: loggedinUser,
     }
     try {
-        stay.owner = loggedinUser
         const addedStay = await stayService.add(stay)
         res.json(addedStay)
     } catch (err) {
@@ -49,9 +49,8 @@ export async function updateStay(req, res) {
     const { loggedinUser, body: stay } = req
     const { _id: userId, isAdmin } = loggedinUser
 
-    if (!isAdmin && stay.owner._id !== userId) {
-        res.status(403).send('Not your stay...')
-        return
+    if (!isAdmin && stay.host._id !== userId) {
+        return res.status(403).send('Not your stay...')
     }
 
     try {
@@ -67,7 +66,6 @@ export async function removeStay(req, res) {
     try {
         const stayId = req.params.id
         const removedId = await stayService.remove(stayId)
-
         res.send(removedId)
     } catch (err) {
         logger.error('Failed to remove stay', err)
@@ -77,7 +75,6 @@ export async function removeStay(req, res) {
 
 export async function addStayMsg(req, res) {
     const { loggedinUser } = req
-
     try {
         const stayId = req.params.id
         const msg = {
@@ -95,7 +92,6 @@ export async function addStayMsg(req, res) {
 export async function removeStayMsg(req, res) {
     try {
         const { id: stayId, msgId } = req.params
-
         const removedId = await stayService.removeStayMsg(stayId, msgId)
         res.send(removedId)
     } catch (err) {
