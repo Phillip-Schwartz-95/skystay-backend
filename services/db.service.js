@@ -1,4 +1,4 @@
-import { MongoClient } from 'mongodb'
+import { MongoClient, ServerApiVersion } from 'mongodb'
 
 import { config } from '../config/index.js'
 import { logger } from './logger.service.js'
@@ -22,8 +22,21 @@ async function _connect() {
     if (dbConn) return dbConn
 
     try {
-        const client = await MongoClient.connect(config.dbURL)
-        return dbConn = client.db(config.dbName)
+        console.log('Connecting to MongoDB using:', config.dbURL)
+
+        const client = new MongoClient(config.dbURL, {
+            serverApi: {
+                version: ServerApiVersion.v1,
+                strict: true,
+                deprecationErrors: true,
+            },
+        })
+
+        await client.connect()
+
+        dbConn = client.db(config.dbName)
+        console.log('Connected to MongoDB at:', config.dbURL, '| Database:', config.dbName)
+        return dbConn
     } catch (err) {
         logger.error('Cannot Connect to DB', err)
         throw err
