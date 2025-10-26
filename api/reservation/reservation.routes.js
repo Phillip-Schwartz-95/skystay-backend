@@ -4,9 +4,9 @@ import { getReservations, getReservationById, addReservation, removeReservation,
 const router = express.Router()
 
 router.get('/', getReservations)
-router.get('/:id', getReservationById)
 router.get('/byStay/:stayId', getByStayId)
 router.get('/byUser/:userId', getByUserId)
+router.get('/:id', getReservationById)
 router.post('/', addReservation)
 router.delete('/:id', removeReservation)
 

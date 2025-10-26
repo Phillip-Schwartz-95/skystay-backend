@@ -22,7 +22,7 @@ async function query(filterBy = { txt: '' }) {
         const criteria = _buildCriteria(filterBy)
         const sort = _buildSort(filterBy)
 
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         var stayCursor = await collection.find(criteria, { sort })
 
         if (filterBy.pageIdx !== undefined) {
@@ -41,7 +41,7 @@ async function getById(stayId) {
     try {
         const criteria = { _id: ObjectId.createFromHexString(stayId) }
 
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         const stay = await collection.findOne(criteria)
 
         stay.createdAt = stay._id.getTimestamp()
@@ -62,7 +62,7 @@ async function remove(stayId) {
         }
         if (!isAdmin) criteria['owner._id'] = ownerId
 
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         const res = await collection.deleteOne(criteria)
 
         if (res.deletedCount === 0) throw ('Not your stay')
@@ -75,7 +75,7 @@ async function remove(stayId) {
 
 async function add(stay) {
     try {
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         await collection.insertOne(stay)
 
         return stay
@@ -91,7 +91,7 @@ async function update(stay) {
     try {
         const criteria = { _id: ObjectId.createFromHexString(stay._id) }
 
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         await collection.updateOne(criteria, { $set: stayToSave })
 
         return stay
@@ -106,7 +106,7 @@ async function addStayMsg(stayId, msg) {
         const criteria = { _id: ObjectId.createFromHexString(stayId) }
         msg.id = makeId()
 
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         await collection.updateOne(criteria, { $push: { msgs: msg } })
 
         return msg
@@ -120,7 +120,7 @@ async function removeStayMsg(stayId, msgId) {
     try {
         const criteria = { _id: ObjectId.createFromHexString(stayId) }
 
-        const collection = await dbService.getCollection('stay')
+        const collection = await dbService.getCollection('stays')
         await collection.updateOne(criteria, { $pull: { msgs: { id: msgId } } })
 
         return msgId
@@ -130,11 +130,17 @@ async function removeStayMsg(stayId, msgId) {
     }
 }
 
-function _buildCriteria(filterBy) {
-    const criteria = {
-        title: { $regex: filterBy.txt, $options: 'i' },
-        price: { $gte: filterBy.minPrice },
+function _buildCriteria(filterBy = {}) {
+    const criteria = {}
+
+    // Search by title if a txt filter exists
+    if (filterBy.txt) {
+        criteria.title = { $regex: filterBy.txt, $options: 'i' }
     }
+
+    // Default minPrice to 0 if undefined or NaN
+    const minPrice = Number(filterBy.minPrice) || 0
+    criteria.price = { $gte: minPrice }
 
     return criteria
 }
