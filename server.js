@@ -12,7 +12,6 @@ import { userRoutes } from './api/user/user.routes.js'
 import { reviewRoutes } from './api/review/review.routes.js'
 import { stayRoutes } from './api/stay/stay.routes.js'
 import { reservationRoutes } from './api/reservation/reservation.routes.js'
-import { setupSocketAPI } from './services/socket.service.js'
 import { setupAsyncLocalStorage } from './middlewares/setupAls.middleware.js'
 import { logger } from './services/logger.service.js'
 
@@ -34,42 +33,28 @@ const server = http.createServer(app)
 app.use(cookieParser())
 app.use(express.json())
 
-// CORS configuration
-app.use(
-  cors({
-    origin(origin, callback) {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true)
-      } else {
-        console.warn('Blocked by CORS:', origin)
-        callback(new Error('Not allowed by CORS'))
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-  })
-)
-
-// Preflight handler
-app.options('*', (req, res) => {
-  res.header('Access-Control-Allow-Origin', req.headers.origin)
+// --- GLOBAL CORS HANDLER ---
+app.use((req, res, next) => {
+  const origin = req.headers.origin
+  if (allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin)
+  }
   res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   res.header('Access-Control-Allow-Credentials', 'true')
-  res.sendStatus(204)
+  if (req.method === 'OPTIONS') return res.sendStatus(204)
+  next()
 })
 
+// --- ROUTES ---
 app.use(setupAsyncLocalStorage)
-
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/review', reviewRoutes)
 app.use('/api/stay', stayRoutes)
 app.use('/api/reservation', reservationRoutes)
 
-// setupSocketAPI(server)
-
+// --- SERVE FRONTEND IN PRODUCTION ---
 if (process.env.NODE_ENV === 'production') {
   console.log('Production mode — serving frontend from /public')
   app.use(express.static(path.join(__dirname, 'public')))
