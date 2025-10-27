@@ -26,7 +26,7 @@ const allowedOrigins = [
     'http://127.0.0.1:5173',
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    'https://your-production-domain.com' // replace when deploy
+    'https://skystay.onrender.com',
 ]
 
 const app = express()
