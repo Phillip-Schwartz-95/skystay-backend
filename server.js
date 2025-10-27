@@ -20,7 +20,6 @@ process.env.DEBUG = 'router:*,express:*'
 
 const __dirname = path.resolve()
 
-// Allowed CORS origins (dev + prod)
 const allowedOrigins = [
     'http://localhost:5173',
     'http://127.0.0.1:5173',
@@ -32,58 +31,39 @@ const allowedOrigins = [
 const app = express()
 const server = http.createServer(app)
 
-// Middleware
 app.use(cookieParser())
 app.use(express.json())
 
-// CORS (enabled for both dev & prod)
-app.use(
-    cors({
-        origin(origin, cb) {
-            if (!origin || allowedOrigins.includes(origin)) return cb(null, true)
-            console.warn(' Blocked by CORS:', origin)
-            return cb(new Error('Not allowed by CORS'))
-        },
-        credentials: true,
-        methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-        allowedHeaders: ['Content-Type', 'Authorization'],
-    })
-)
+app.use(cors({
+    origin(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            return callback(null, true)
+        } else {
+            console.warn('Blocked by CORS:', origin)
+            return callback(new Error('Not allowed by CORS'))
+        }
+    },
+    credentials: true,
+}))
 
-// Handle OPTIONS preflights globally
-app.options(/.*/, (req, res) => {
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || '*')
-    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS')
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-    res.setHeader('Access-Control-Allow-Credentials', 'true')
-    res.sendStatus(204)
-})
-
-// ALS (must come before routes)
 app.use(setupAsyncLocalStorage)
 
-// API Routes 
 app.use('/api/auth', authRoutes)
 app.use('/api/user', userRoutes)
 app.use('/api/review', reviewRoutes)
 app.use('/api/stay', stayRoutes)
 app.use('/api/reservation', reservationRoutes)
 
-// Socket.io Setup
-// not relebant right now
-//setupSocketAPI(server)
+// setupSocketAPI(server)
 
-// Serve Frontend in Production 
 if (process.env.NODE_ENV === 'production') {
     console.log('Production mode — serving frontend from /public')
     app.use(express.static(path.join(__dirname, 'public')))
 
-    // Express 5
-    app.use((req, res) => {
+    app.get('*', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'index.html'))
     })
 }
 
-// Start Server
 const port = process.env.PORT || 3030
 server.listen(port, () => logger.info(`Server running on port: ${port}`))
