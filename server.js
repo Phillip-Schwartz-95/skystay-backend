@@ -21,11 +21,11 @@ process.env.DEBUG = 'router:*,express:*'
 const __dirname = path.resolve()
 
 const allowedOrigins = [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'https://skystay.onrender.com',
+  'https://skystay.onrender.com',
+  'http://localhost:5173',
+  'http://127.0.0.1:5173',
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
 ]
 
 const app = express()
@@ -34,17 +34,31 @@ const server = http.createServer(app)
 app.use(cookieParser())
 app.use(express.json())
 
-app.use(cors({
+// CORS configuration
+app.use(
+  cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
-            return callback(null, true)
-        } else {
-            console.warn('Blocked by CORS:', origin)
-            return callback(new Error('Not allowed by CORS'))
-        }
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true)
+      } else {
+        console.warn('Blocked by CORS:', origin)
+        callback(new Error('Not allowed by CORS'))
+      }
     },
     credentials: true,
-}))
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+  })
+)
+
+// Preflight handler
+app.options('*', (req, res) => {
+  res.header('Access-Control-Allow-Origin', req.headers.origin)
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  res.header('Access-Control-Allow-Credentials', 'true')
+  res.sendStatus(204)
+})
 
 app.use(setupAsyncLocalStorage)
 
@@ -57,12 +71,11 @@ app.use('/api/reservation', reservationRoutes)
 // setupSocketAPI(server)
 
 if (process.env.NODE_ENV === 'production') {
-    console.log('Production mode — serving frontend from /public')
-    app.use(express.static(path.join(__dirname, 'public')))
-
-    app.get('*', (req, res) => {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'))
-    })
+  console.log('Production mode — serving frontend from /public')
+  app.use(express.static(path.join(__dirname, 'public')))
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'))
+  })
 }
 
 const port = process.env.PORT || 3030
