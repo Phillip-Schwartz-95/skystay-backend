@@ -1,6 +1,5 @@
 export const reservations = [
     {
-        "_id": "r101",
         "stayId": "s101",
         "userId": "u101",
         "checkIn": "2025-10-20",
