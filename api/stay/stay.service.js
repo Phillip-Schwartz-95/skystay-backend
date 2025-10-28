@@ -133,17 +133,35 @@ async function removeStayMsg(stayId, msgId) {
 function _buildCriteria(filterBy = {}) {
     const criteria = {}
 
-    // Search by title if a txt filter exists
     if (filterBy.txt) {
         criteria.title = { $regex: filterBy.txt, $options: 'i' }
     }
 
-    // Default minPrice to 0 if undefined or NaN
-    const minPrice = Number(filterBy.minPrice) || 0
-    criteria.price = { $gte: minPrice }
+    if (filterBy.city) {
+        criteria['loc.city'] = { $regex: filterBy.city, $options: 'i' }
+    }
+
+    if (filterBy.capacity && +filterBy.capacity > 0) {
+        criteria.maxGuests = { $gte: +filterBy.capacity }
+    }
+
+    if (filterBy.minPrice) {
+        criteria.price = { $gte: +filterBy.minPrice }
+    }
+
+    if (filterBy.startDate && filterBy.endDate) {
+        const start = new Date(filterBy.startDate)
+        const end = new Date(filterBy.endDate)
+        criteria.$or = [
+            { reservations: { $exists: false } },
+            { 'reservations.endDate': { $lte: start } },
+            { 'reservations.startDate': { $gte: end } },
+        ]
+    }
 
     return criteria
 }
+
 
 function _buildSort(filterBy) {
     if (!filterBy.sortField) return {}
