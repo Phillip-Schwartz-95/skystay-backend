@@ -7,7 +7,7 @@ import { logger } from './services/logger.service.js'
 
 import { users } from './data/seed/users.js'
 import { stays } from './data/seed/stays.js'
-import { reviews } from './data/seed/reviews.js'
+import { reviews } from './data/seed/generate-reviews.js'
 import { reservations } from './data/seed/reservations.js'
 import { stayPhotos } from './data/seed/stayphotos.js'
 

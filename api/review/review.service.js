@@ -8,45 +8,46 @@ export const reviewService = { query, remove, add }
 
 async function query(filterBy = {}) {
     try {
-        const criteria = _buildCriteria(filterBy)
         const collection = await dbService.getCollection('review')
+        const criteria = _buildCriteria(filterBy)
 
-        // var reviews = await collection.find(criteria).toArray()
-        var reviews = await collection.aggregate([
-            {
-                $match: criteria,
-            },
-            {
+        // Check if this is stay-based or user-based
+        const pipeline = [{ $match: criteria }]
+
+        if (filterBy.aboutStayId) {
+            // Stay-based review (from stays collection)
+            pipeline.push({
                 $lookup: {
-                    localField: 'byUserId',
-                    from: 'user',
+                    from: 'stays',
+                    localField: 'aboutStayId',
                     foreignField: '_id',
-                    as: 'byUser',
-                },
-            },
-            {
-                $unwind: '$byUser',
-            },
-            {
-                $lookup: {
-                    localField: 'aboutUserId',
-                    from: 'user',
-                    foreignField: '_id',
-                    as: 'aboutUser',
-                },
-            },
-            {
-                $unwind: '$aboutUser',
-            },
-            {
-                $project: {
-                    'txt': true,
-                    'byUser._id': true, 'byUser.fullname': true,
-                    'aboutUser._id': true, 'aboutUser.fullname': true,
+                    as: 'aboutStay'
                 }
-            }
-        ]).toArray()
+            })
+            pipeline.push({ $unwind: { path: '$aboutStay', preserveNullAndEmptyArrays: true } })
+        } else {
+            // User-based review (legacy)
+            pipeline.push({
+                $lookup: {
+                    from: 'user',
+                    localField: 'byUserId',
+                    foreignField: '_id',
+                    as: 'byUser'
+                }
+            })
+            pipeline.push({ $unwind: { path: '$byUser', preserveNullAndEmptyArrays: true } })
+            pipeline.push({
+                $lookup: {
+                    from: 'user',
+                    localField: 'aboutUserId',
+                    foreignField: '_id',
+                    as: 'aboutUser'
+                }
+            })
+            pipeline.push({ $unwind: { path: '$aboutUser', preserveNullAndEmptyArrays: true } })
+        }
 
+        const reviews = await collection.aggregate(pipeline).toArray()
         return reviews
     } catch (err) {
         logger.error('cannot get reviews', err)
@@ -92,10 +93,31 @@ async function add(review) {
 }
 
 function _buildCriteria(filterBy) {
-    const criteria = {}
+  const criteria = {}
 
-    if (filterBy.byUserId) {
-        criteria.byUserId = ObjectId.createFromHexString(filterBy.byUserId)
+  if (filterBy.byUserId) {
+    try {
+      criteria.byUserId = new ObjectId(filterBy.byUserId)
+    } catch {
+      criteria.byUserId = filterBy.byUserId
     }
-    return criteria
+  }
+
+  if (filterBy.aboutStayId) {
+    try {
+      criteria.aboutStayId = new ObjectId(filterBy.aboutStayId)
+    } catch {
+      criteria.aboutStayId = filterBy.aboutStayId
+    }
+  }
+
+  if (filterBy.aboutUserId) {
+    try {
+      criteria.aboutUserId = new ObjectId(filterBy.aboutUserId)
+    } catch {
+      criteria.aboutUserId = filterBy.aboutUserId
+    }
+  }
+
+  return criteria
 }
