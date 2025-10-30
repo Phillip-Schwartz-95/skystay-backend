@@ -1,9 +1,15 @@
 import { config } from '../config/index.js'
 import { logger } from '../services/logger.service.js'
 import { asyncLocalStorage } from '../services/als.service.js'
+import { authService } from '../api/auth/auth.service.js'
 
 export function requireAuth(req, res, next) {
-    const { loggedinUser } = asyncLocalStorage.getStore()
+    let { loggedinUser } = asyncLocalStorage.getStore() || {}
+    if (!loggedinUser) {
+        const token = req.cookies?.loginToken
+        if (token) loggedinUser = authService.validateToken(token)
+    }
+
     req.loggedinUser = loggedinUser
 
     if (config.isGuestMode && !loggedinUser) {

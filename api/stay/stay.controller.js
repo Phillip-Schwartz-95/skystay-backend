@@ -31,13 +31,22 @@ export async function getStayById(req, res) {
 }
 
 export async function addStay(req, res) {
-    const { loggedinUser, body } = req
-    const stay = {
-        title: body.title,
-        price: body.price,
-        host: loggedinUser,
-    }
     try {
+        const { loggedinUser } = req
+        const body = req.body
+
+        if (!loggedinUser) return res.status(401).send('Not logged in')
+
+        // Keep all fields sent client
+        const stay = {
+            ...body,
+            host: {
+                _id: loggedinUser._id,
+                fullname: loggedinUser.fullname,
+                imgUrl: loggedinUser.imgUrl || '',
+            },
+        }
+
         const addedStay = await stayService.add(stay)
         res.json(addedStay)
     } catch (err) {
