@@ -1,5 +1,6 @@
 import { logger } from '../../services/logger.service.js'
 import { stayService } from './stay.service.js'
+import { normalizeStayPayload } from './normalizeStayPayload.js'
 
 export async function getStays(req, res) {
     try {
@@ -33,21 +34,9 @@ export async function getStayById(req, res) {
 export async function addStay(req, res) {
     try {
         const { loggedinUser } = req
-        const body = req.body
-
         if (!loggedinUser) return res.status(401).send('Not logged in')
-
-        // Keep all fields sent client
-        const stay = {
-            ...body,
-            host: {
-                _id: loggedinUser._id,
-                fullname: loggedinUser.fullname,
-                imgUrl: loggedinUser.imgUrl || '',
-            },
-        }
-
-        const addedStay = await stayService.add(stay)
+        const canonical = normalizeStayPayload(req.body, loggedinUser)
+        const addedStay = await stayService.add(canonical)
         res.json(addedStay)
     } catch (err) {
         logger.error('Failed to add stay', err)
@@ -58,11 +47,9 @@ export async function addStay(req, res) {
 export async function updateStay(req, res) {
     const { loggedinUser, body: stay } = req
     const { _id: userId, isAdmin } = loggedinUser
-
     if (!isAdmin && stay.host._id !== userId) {
         return res.status(403).send('Not your stay...')
     }
-
     try {
         const updatedStay = await stayService.update(stay)
         res.json(updatedStay)
