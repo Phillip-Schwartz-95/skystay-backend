@@ -3,9 +3,10 @@ export function normalizeStayPayload(input, user) {
     const now = Date.now()
     const id = input._id || `s${now}`
 
-    const imgs = Array.isArray(input.imgs)
+    const imgsArr = Array.isArray(input.imgs)
         ? input.imgs.filter(Boolean)
         : (input.imgUrl ? [input.imgUrl] : [])
+    const imgs = Array.from(new Set(imgsArr.map(String)))
 
     const loc = {
         country: input.loc?.country || input.country || '',
@@ -15,11 +16,13 @@ export function normalizeStayPayload(input, user) {
         address: input.loc?.address || input.address || [input.city, input.country].filter(Boolean).join(', ')
     }
 
-    const highlights = Array.isArray(input.highlights) ? input.highlights.map(h => ({
-        icon: h.icon || '',
-        title: h.title || '',
-        desc: h.desc || ''
-    })) : []
+    const highlights = Array.isArray(input.highlights)
+        ? input.highlights.map(h => ({
+            icon: h.icon || '',
+            title: h.title || '',
+            desc: h.desc || ''
+        }))
+        : []
 
     const amenities = Array.isArray(input.amenities) ? input.amenities.slice() : []
 
@@ -39,7 +42,7 @@ export function normalizeStayPayload(input, user) {
     }
 
     const host = {
-        _id: user?._id || input.host?._id,
+        _id: String(user?._id || input.host?._id || ''),
         fullname: user?.fullname || input.host?.fullname || '',
         imgUrl: user?.imgUrl || input.host?.imgUrl || '',
         role: input.host?.role || '',
@@ -58,8 +61,9 @@ export function normalizeStayPayload(input, user) {
         id: input.host?.id
     }
 
-    return {
+    const out = {
         _id: id,
+        hostId: String(user?._id || input.hostId || ''),
         title: String(input.title || '').trim(),
         price: Number(input.price || 0),
         loc,
@@ -67,7 +71,6 @@ export function normalizeStayPayload(input, user) {
         summary: input.summary || '',
         maxGuests: Number(input.maxGuests || 1),
         bedRooms: Number(input.bedRooms || 1),
-        beds: input.beds != null ? Number(input.beds) : undefined,
         baths: Number(input.baths || 1),
         highlights,
         amenities,
@@ -77,4 +80,7 @@ export function normalizeStayPayload(input, user) {
         cancellationPolicy: Array.isArray(input.cancellationPolicy) ? input.cancellationPolicy.slice() : [],
         host
     }
+
+    if (input.beds != null) out.beds = Number(input.beds)
+    return out
 }

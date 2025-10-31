@@ -57,11 +57,24 @@ async function getById(stayId) {
 }
 
 async function remove(stayId) {
-    const { loggedinUser } = asyncLocalStorage.getStore()
-    const { _id: ownerId, isAdmin } = loggedinUser
+    const store = asyncLocalStorage.getStore() || {}
+    const { loggedinUser } = store
+    const ownerId = loggedinUser?._id
+    const isAdmin = !!loggedinUser?.isAdmin
     try {
-        const criteria = { _id: asCriteriaId(stayId) }
-        if (!isAdmin) criteria['host._id'] = ownerId
+        const base = { _id: asCriteriaId(stayId) }
+        let criteria = base
+        if (!isAdmin && ownerId) {
+            const ownerStr = String(ownerId)
+            const or = [{ hostId: ownerStr }, { 'host._id': ownerStr }]
+            try {
+                if (/^[0-9a-fA-F]{24}$/.test(ownerStr)) {
+                    const oid = ObjectId.createFromHexString(ownerStr)
+                    or.push({ 'host._id': oid })
+                }
+            } catch (_) { }
+            criteria = { $and: [base, { $or: or }] }
+        }
         const collection = await dbService.getCollection('stays')
         const res = await collection.deleteOne(criteria)
         if (res.deletedCount === 0) throw ('Not your stay')
@@ -122,21 +135,49 @@ async function removeStayMsg(stayId, msgId) {
 }
 
 function _buildCriteria(filterBy = {}) {
-    const criteria = {}
-    if (filterBy.txt) criteria.title = { $regex: filterBy.txt, $options: 'i' }
-    if (filterBy.city) criteria['loc.city'] = { $regex: filterBy.city, $options: 'i' }
-    if (filterBy.capacity && +filterBy.capacity > 0) criteria.maxGuests = { $gte: +filterBy.capacity }
-    if (filterBy.minPrice) criteria.price = { $gte: +filterBy.minPrice }
+    const and = []
+
+    if (filterBy.hostId) {
+        const idStr = String(filterBy.hostId)
+        const hostOr = [{ hostId: idStr }, { 'host._id': idStr }]
+        try {
+            if (/^[0-9a-fA-F]{24}$/.test(idStr)) {
+                const oid = ObjectId.createFromHexString(idStr)
+                hostOr.push({ 'host._id': oid })
+            }
+        } catch (_) { }
+        and.push({ $or: hostOr })
+    }
+
+    if (filterBy.txt) {
+        and.push({ title: { $regex: filterBy.txt, $options: 'i' } })
+    }
+
+    if (filterBy.city) {
+        and.push({ 'loc.city': { $regex: filterBy.city, $options: 'i' } })
+    }
+
+    if (filterBy.capacity && +filterBy.capacity > 0) {
+        and.push({ maxGuests: { $gte: +filterBy.capacity } })
+    }
+
+    if (filterBy.minPrice) {
+        and.push({ price: { $gte: +filterBy.minPrice } })
+    }
+
     if (filterBy.startDate && filterBy.endDate) {
         const start = new Date(filterBy.startDate)
         const end = new Date(filterBy.endDate)
-        criteria.$or = [
-            { reservations: { $exists: false } },
-            { 'reservations.endDate': { $lte: start } },
-            { 'reservations.startDate': { $gte: end } },
-        ]
+        and.push({
+            $or: [
+                { reservations: { $exists: false } },
+                { 'reservations.endDate': { $lte: start } },
+                { 'reservations.startDate': { $gte: end } },
+            ],
+        })
     }
-    return criteria
+
+    return and.length ? { $and: and } : {}
 }
 
 function _buildSort(filterBy) {

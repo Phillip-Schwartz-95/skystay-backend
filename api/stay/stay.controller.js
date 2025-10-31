@@ -11,6 +11,7 @@ export async function getStays(req, res) {
             startDate: req.query.startDate || '',
             endDate: req.query.endDate || '',
             coords: req.query.coords ? JSON.parse(req.query.coords) : null,
+            hostId: req.query.hostId ? String(req.query.hostId) : ''
         }
         const stays = await stayService.query(filterBy)
         res.json(stays)
@@ -35,8 +36,19 @@ export async function addStay(req, res) {
     try {
         const { loggedinUser } = req
         if (!loggedinUser) return res.status(401).send('Not logged in')
+
         const canonical = normalizeStayPayload(req.body, loggedinUser)
-        const addedStay = await stayService.add(canonical)
+        const stay = {
+            ...canonical,
+            hostId: String(loggedinUser._id),
+            host: {
+                _id: loggedinUser._id,
+                fullname: loggedinUser.fullname,
+                imgUrl: loggedinUser.imgUrl || ''
+            }
+        }
+
+        const addedStay = await stayService.add(stay)
         res.json(addedStay)
     } catch (err) {
         logger.error('Failed to add stay', err)
@@ -47,9 +59,11 @@ export async function addStay(req, res) {
 export async function updateStay(req, res) {
     const { loggedinUser, body: stay } = req
     const { _id: userId, isAdmin } = loggedinUser
-    if (!isAdmin && stay.host._id !== userId) {
+
+    if (!isAdmin && String(stay.host?.(_id) || stay.hostId) !== String(userId)) {
         return res.status(403).send('Not your stay...')
     }
+
     try {
         const updatedStay = await stayService.update(stay)
         res.json(updatedStay)
@@ -76,7 +90,7 @@ export async function addStayMsg(req, res) {
         const stayId = req.params.id
         const msg = {
             txt: req.body.txt,
-            by: loggedinUser,
+            by: loggedinUser
         }
         const savedMsg = await stayService.addStayMsg(stayId, msg)
         res.json(savedMsg)
