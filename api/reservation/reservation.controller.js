@@ -3,7 +3,7 @@ import { logger } from '../../services/logger.service.js'
 
 export async function getReservations(req, res) {
     try {
-        const filterBy = req.query
+        const filterBy = req.query || {}
         const reservations = await reservationService.query(filterBy)
         res.json(reservations)
     } catch (err) {
@@ -24,12 +24,29 @@ export async function getReservationById(req, res) {
 
 export async function addReservation(req, res) {
     try {
-        const reservation = req.body
+        const { loggedinUser } = req
+        const reservation = { ...req.body }
+        if (loggedinUser && loggedinUser._id) reservation.userId = String(loggedinUser._id)
         const addedReservation = await reservationService.add(reservation)
         res.json(addedReservation)
     } catch (err) {
         logger.error('Cannot add reservation', err)
         res.status(500).send('Failed to add reservation')
+    }
+}
+
+export async function updateReservationStatus(req, res) {
+    try {
+        const { id } = req.params
+        const status = String(req.body?.status || '').toLowerCase()
+        if (!status || !['approved', 'declined'].includes(status)) {
+            return res.status(400).send({ err: 'Invalid status' })
+        }
+        const updated = await reservationService.updateStatus(id, status)
+        res.json(updated)
+    } catch (err) {
+        logger.error('Cannot update reservation status', err)
+        res.status(500).send('Failed to update reservation status')
     }
 }
 
