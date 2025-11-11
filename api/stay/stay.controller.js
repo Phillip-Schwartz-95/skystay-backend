@@ -13,6 +13,7 @@ export async function getStays(req, res) {
             coords: req.query.coords ? JSON.parse(req.query.coords) : null,
             hostId: req.query.hostId ? String(req.query.hostId) : ''
         }
+        
         const stays = await stayService.query(filterBy)
         res.json(stays)
     } catch (err) {
